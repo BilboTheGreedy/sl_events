@@ -33,7 +33,7 @@ type notifyEvent struct {
 	} `json:"data"`
 }
 
-func waitForNotification(l *pq.Listener) {
+func waitForNotification(l *pq.Listener, vault_server string, vault_path string, vault_key string) {
 	for {
 		select {
 		case n := <-l.Notify:
@@ -46,8 +46,7 @@ func waitForNotification(l *pq.Listener) {
 				return
 			}
 			fmt.Println(string(prettyJSON.Bytes()))
-
-			postMsg(slack_token, slack_channel, prettyJSON.Bytes())
+			postMsg(vault_server, vault_path, vault_key, prettyJSON.Bytes())
 			return
 		case <-time.After(90 * time.Second):
 			fmt.Println("Received no events for 90 seconds, checking connection")
@@ -65,7 +64,6 @@ func main() {
 	vault_key := flag.String("vault_key", "", " vault key")
 
 	flag.Parse()
-	readVault(*vault_server, *vault_path, *vault_key)
 
 	conninfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
@@ -89,6 +87,6 @@ func main() {
 
 	fmt.Println("Start monitoring for new events...")
 	for {
-		waitForNotification(listener)
+		waitForNotification(listener, *vault_server, *vault_path, *vault_key)
 	}
 }

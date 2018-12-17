@@ -18,13 +18,13 @@ services:
       - database_data:/var/lib/postgresql/data
   collector:
     build: "./collector"
-    command: -vault_server=http://192.168.1.53:8200 -vault_path=secret/sl_accounts -vault_key=caxzGUyABLehi0KMjUhUBuvo 
+    command: -vault_server=http://192.168.1.53:8200 -vault_path=softlayer/sl_events -vault_key=8JSKImmxcS4vTdGE4vFOUJye 
     links:
       - "db"
     restart: always
   announcer:
     build: "./announcer"
-    command: -vault_server=http://192.168.1.53:8200 -vault_path=secret/slack -vault_key=caxzGUyABLehi0KMjUhUBuvo
+    command: -vault_server=http://192.168.1.53:8200 -vault_path=slack/sl_events -vault_key=3FY2PJRca7CTBXZCyKYd4WNd
     links:
       - "db"
     restart: always

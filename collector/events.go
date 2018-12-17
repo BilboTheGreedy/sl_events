@@ -22,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	//time between polls
-	ticker := time.NewTicker(300 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	go func() {
 		for {
 			select {
