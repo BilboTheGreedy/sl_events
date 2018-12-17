@@ -1,0 +1,30 @@
+version: '3.1'
+
+volumes:
+  database_data:
+    driver: local
+
+services:
+  db:
+    build: "./db"
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - database_data:/var/lib/postgresql/data
+  collector:
+    build: "./collector"
+    command: -vault_server=http://192.168.1.53:8200 -vault_path=secret/sl_accounts -vault_key=caxzGUyABLehi0KMjUhUBuvo 
+    links:
+      - "db"
+    restart: always
+  announcer:
+    build: "./announcer"
+    command: -vault_server=http://192.168.1.53:8200 -vault_path=secret/slack -vault_key=caxzGUyABLehi0KMjUhUBuvo
+    links:
+      - "db"
+    restart: always

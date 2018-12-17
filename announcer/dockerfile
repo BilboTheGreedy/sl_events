@@ -1,0 +1,9 @@
+FROM golang:1.7-alpine
+
+LABEL version="1.0"
+LABEL description="softlayer slack announcer"
+LABEL maintainer "daniel.rapp@se.ibm.com"
+
+ADD announcer /opt/announcer
+ENV PATH="/opt/announcer:${PATH}"
+ENTRYPOINT ["/opt/announcer"]

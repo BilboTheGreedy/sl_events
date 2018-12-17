@@ -1,0 +1,9 @@
+FROM golang:1.7-alpine
+
+LABEL version="1.0"
+LABEL description="softlayer slack event collector"
+LABEL maintainer "daniel.rapp@se.ibm.com"
+
+ADD collector /opt/collector
+ENV PATH="/opt/collector:${PATH}"
+ENTRYPOINT ["/opt/collector"]
