@@ -34,7 +34,7 @@ type notifyEvent struct {
 		Sum       string `json:"sum"`
 		Sub       string `json:"Sub"`
 		Keyname   string `json:"keyname"`
-		startDate string `json:"startDate"`
+		StartDate string `json:"startDate"`
 		Posted    bool   `json:"posted"`
 	} `json:"data"`
 }
@@ -108,10 +108,6 @@ func postMsg(vault_server string, vault_path string, vault_key string, data []by
 			slack.AttachmentField{
 				Title: "Ticket Id",
 				Value: strconv.Itoa(notifyevent.Data.Ticketid),
-			},
-			slack.AttachmentField{
-				Title: "start Date",
-				Value: notifyevent.Data.startDate,
 			},
 		},
 	}
