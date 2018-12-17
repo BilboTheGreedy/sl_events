@@ -1,9 +1,9 @@
-FROM golang:1.7-alpine
+FROM alpine:latest
 
 LABEL version="1.0"
-LABEL description="softlayer slack event collector"
+LABEL description="softlayer event collector"
 LABEL maintainer "daniel.rapp@se.ibm.com"
-
+RUN apk update
+RUN apk add ca-certificates
 ADD collector /opt/collector
-ENV PATH="/opt/collector:${PATH}"
 ENTRYPOINT ["/opt/collector"]

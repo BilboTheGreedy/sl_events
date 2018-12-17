@@ -37,7 +37,7 @@ create table IF NOT EXISTS events(
     sum varchar,
     sub varchar,
     keyname varchar,
-    created varchar
+    startDate varchar
     );
 
 

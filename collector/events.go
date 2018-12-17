@@ -1,41 +1,68 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/hashicorp/vault/api"
+	_ "github.com/lib/pq"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 )
 
-var sl_secret string // global variable
-var sl_user string   // global variable
+var sl_secret string    // global variable
+var sl_user string      // global variable
+var VClient *api.Client // global variable
 
-func main() {
-	vault_server := flag.String("vault_server", "", " vault uri.")
-	vault_path := flag.String("vault_path", "", " vault path.")
-	vault_key := flag.String("vault_key", "", " vault key")
-	flag.Parse()
+const (
+	host     = "db"
+	port     = 5432
+	user     = "postgres"
+	password = "postgres"
+	dbname   = "postgres"
+)
 
-	//time between polls
-	ticker := time.NewTicker(10 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				//Call the periodic function.
-				getEvents(*vault_server, *vault_key, *vault_path)
-			}
-		}
-	}()
+func insertDB(ticketid int, sum string, sub string, keyname string, startDate string) {
 
-	quit := make(chan bool, 1)
-	// main will continue to wait untill there is an entry in quit
-	<-quit
+	sqlStatement := `
+		INSERT INTO events (ticketid, sum, sub, keyname, startDate)
+		VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(sqlStatement, ticketid, sum, sub, keyname, startDate)
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func InitVault(server string, token string) error {
+	conf := &api.Config{
+		Address: server,
+	}
+
+	client, err := api.NewClient(conf)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	VClient = client
+
+	VClient.SetToken(token)
+	return nil
 }
 
 func getEvents(vault_server string, vault_key string, vault_path string) {
@@ -79,4 +106,27 @@ func getEvents(vault_server string, vault_key string, vault_path string) {
 
 func printMsg(msg string) {
 	fmt.Println(time.Now(), "#", msg)
+}
+
+func main() {
+	vault_server := flag.String("vault_server", "", " vault uri.")
+	vault_path := flag.String("vault_path", "", " vault path.")
+	vault_key := flag.String("vault_key", "", " vault key")
+	flag.Parse()
+
+	//time between polls
+	ticker := time.NewTicker(10 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				//Call the periodic function.
+				getEvents(*vault_server, *vault_key, *vault_path)
+			}
+		}
+	}()
+
+	quit := make(chan bool, 1)
+	// main will continue to wait untill there is an entry in quit
+	<-quit
 }

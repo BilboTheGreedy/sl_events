@@ -1,9 +1,9 @@
-FROM golang:1.7-alpine
+FROM alpine:latest
 
 LABEL version="1.0"
 LABEL description="softlayer slack announcer"
 LABEL maintainer "daniel.rapp@se.ibm.com"
-
+RUN apk update
+RUN apk add ca-certificates
 ADD announcer /opt/announcer
-ENV PATH="/opt/announcer:${PATH}"
 ENTRYPOINT ["/opt/announcer"]

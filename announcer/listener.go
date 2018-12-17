@@ -6,11 +6,17 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"strconv"
 	"time"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/lib/pq"
+	"github.com/nlopes/slack"
 )
 
+var VClient *api.Client // global variable
 const (
 	host     = "db"
 	port     = 5432
@@ -23,16 +29,100 @@ type notifyEvent struct {
 	Table  string `json:"table"`
 	Action string `json:"action"`
 	Data   struct {
-		ID       int    `json:"id"`
-		Ticketid int    `json:"ticketid"`
-		Sum      string `json:"sum"`
-		Sub      string `json:"Sub"`
-		Keyname  string `json:"keyname"`
-		Created  string `json:"created"`
-		Posted   bool   `json:"posted"`
+		ID        int    `json:"id"`
+		Ticketid  int    `json:"ticketid"`
+		Sum       string `json:"sum"`
+		Sub       string `json:"Sub"`
+		Keyname   string `json:"keyname"`
+		startDate string `json:"startDate"`
+		Posted    bool   `json:"posted"`
 	} `json:"data"`
 }
 
+func printMsg(msg string) {
+	fmt.Println(time.Now(), "#", msg)
+}
+
+func msgColor(event string) string {
+	switch event {
+	case "UNPLANNED_INCIDENT":
+		return "bad"
+	case "PLANNED":
+		return "warning"
+	case "ANNOUNCEMENT":
+		return "good"
+	default:
+		return "#439FE0"
+	}
+}
+
+type Slack struct {
+	Token   string
+	Channel string
+}
+
+func postMsg(vault_server string, vault_path string, vault_key string, data []byte) {
+
+	var notifyevent notifyEvent
+	if err := json.Unmarshal(data, &notifyevent); err != nil {
+		panic(err)
+	}
+
+	err := InitVault(vault_server, vault_key)
+	if err != nil {
+		log.Println(err)
+
+	} else {
+		printMsg("Connecting to Vault")
+	}
+	secretValues, err := VClient.Logical().Read(vault_path)
+	if err != nil {
+		log.Println(err)
+
+	}
+	var sc Slack
+	for k, v := range secretValues.Data {
+		switch k {
+		case "slack_token":
+			sc.Token = fmt.Sprintf("%v", v)
+		case "slack_channel":
+			sc.Channel = fmt.Sprintf("%v", v)
+		default:
+
+		}
+	}
+
+	api := slack.New(sc.Token)
+	attachment := slack.Attachment{
+		Color: msgColor(notifyevent.Data.Keyname),
+		Fields: []slack.AttachmentField{
+
+			slack.AttachmentField{
+				Title: "Event Type",
+				Value: notifyevent.Data.Keyname,
+			},
+			slack.AttachmentField{
+				Title: notifyevent.Data.Sub,
+				Value: notifyevent.Data.Sum,
+			},
+			slack.AttachmentField{
+				Title: "Ticket Id",
+				Value: strconv.Itoa(notifyevent.Data.Ticketid),
+			},
+			slack.AttachmentField{
+				Title: "start Date",
+				Value: notifyevent.Data.startDate,
+			},
+		},
+	}
+
+	channelID, timestamp, err := api.PostMessage(sc.Channel, slack.MsgOptionText("", false), slack.MsgOptionAttachments(attachment))
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Message successfully sent", channelID, timestamp)
+}
 func waitForNotification(l *pq.Listener, vault_server string, vault_path string, vault_key string) {
 	for {
 		select {
@@ -56,6 +146,22 @@ func waitForNotification(l *pq.Listener, vault_server string, vault_path string,
 			return
 		}
 	}
+}
+
+func InitVault(server string, token string) error {
+	conf := &api.Config{
+		Address: server,
+	}
+
+	client, err := api.NewClient(conf)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	VClient = client
+
+	VClient.SetToken(token)
+	return nil
 }
 
 func main() {
